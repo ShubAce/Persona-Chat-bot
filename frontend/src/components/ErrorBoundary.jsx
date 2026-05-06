@@ -24,12 +24,12 @@ class ErrorBoundary extends React.Component {
 		if (this.state.hasError) {
 			// Custom error UI
 			return (
-				<div className="min-h-screen flex items-center justify-center bg-gray-50">
+				<div className="min-h-screen flex items-center justify-center bg-transparent">
 					<div className="max-w-md mx-auto text-center">
 						<div className="text-red-500 text-6xl mb-4">😱</div>
-						<h2 className="text-2xl font-bold text-gray-900 mb-2">Oops! Something went wrong</h2>
-						<p className="text-gray-600 mb-4">We encountered an unexpected error. This might be due to:</p>
-						<ul className="text-left text-sm text-gray-600 mb-6 space-y-1">
+						<h2 className="text-2xl font-bold text-slate-900 dark:text-slate-100 mb-2">Oops! Something went wrong</h2>
+						<p className="text-slate-600 dark:text-slate-300 mb-4">We encountered an unexpected error. This might be due to:</p>
+						<ul className="text-left text-sm text-slate-600 dark:text-slate-300 mb-6 space-y-1">
 							<li>• Backend server not running</li>
 							<li>• Network connection issues</li>
 							<li>• Missing or invalid data</li>
@@ -43,15 +43,17 @@ class ErrorBoundary extends React.Component {
 							</button>
 							<button
 								onClick={() => this.setState({ hasError: false, error: null, errorInfo: null })}
-								className="w-full px-4 py-2 bg-gray-200 text-gray-900 rounded-lg hover:bg-gray-300 transition-colors"
+								className="w-full px-4 py-2 bg-gray-200 text-gray-900 rounded-lg hover:bg-gray-300 transition-colors dark:bg-slate-800 dark:text-slate-100 dark:hover:bg-slate-700"
 							>
 								Try Again
 							</button>
 						</div>
 						{process.env.NODE_ENV === "development" && this.state.error && (
 							<details className="mt-6 text-left">
-								<summary className="text-sm font-medium text-gray-700 cursor-pointer">Technical Details (Development Mode)</summary>
-								<pre className="mt-2 text-xs bg-gray-100 p-3 rounded overflow-auto text-red-600">
+								<summary className="text-sm font-medium text-slate-700 dark:text-slate-200 cursor-pointer">
+									Technical Details (Development Mode)
+								</summary>
+								<pre className="mt-2 text-xs bg-gray-100 dark:bg-slate-900 p-3 rounded overflow-auto text-red-600">
 									{this.state.error && this.state.error.toString()}
 									<br />
 									{this.state.errorInfo.componentStack}

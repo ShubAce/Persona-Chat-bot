@@ -23,6 +23,22 @@ export const chatAPI = {
 		}
 		return api.post("/chat", formData);
 	},
+	streamMessage: (data, abortSignal) => {
+		const formData = new FormData();
+		formData.append("persona_id", data.persona_id);
+		formData.append("message", data.message);
+		if (data.session_id) {
+			formData.append("session_id", data.session_id);
+		}
+		return fetch(`${api.defaults.baseURL}/chat/stream`, {
+			method: "POST",
+			body: formData,
+			signal: abortSignal,
+			headers: {
+				Accept: "text/event-stream",
+			},
+		});
+	},
 	deleteSession: (sessionId) => api.delete(`/chat/sessions/${sessionId}`),
 };
 

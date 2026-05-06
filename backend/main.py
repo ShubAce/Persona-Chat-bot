@@ -1,11 +1,13 @@
 from fastapi import FastAPI, Depends, HTTPException, Form
+from fastapi.responses import StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 from typing import Optional
 from datetime import datetime
 import uvicorn
+import json
 
-from database import engine, get_db, Base
+from database import engine, get_db, Base, SessionLocal
 from models import Persona, ChatSession, ChatMessage
 from ai_service import PersonaChatService
 
@@ -195,6 +197,99 @@ async def chat(persona_id: int = Form(...),
         },
         "persona_name": persona.name
     }
+
+@app.post("/chat/stream")
+async def chat_stream(persona_id: int = Form(...),
+                      message: str = Form(...),
+                      session_id: Optional[int] = Form(None),
+                      db: Session = Depends(get_db)):
+    """Stream a message response from the persona."""
+    persona = db.query(Persona).filter(Persona.id == persona_id).first()
+    if not persona:
+        raise HTTPException(status_code=404, detail="Persona not found")
+
+    if session_id:
+        session = db.query(ChatSession).filter(ChatSession.id == session_id).first()
+        if not session:
+            raise HTTPException(status_code=404, detail="Chat session not found")
+    else:
+        session_title = message[:50] + "..." if len(message) > 50 else message
+        session = ChatSession(persona_id=persona_id, title=session_title)
+        db.add(session)
+        db.commit()
+        db.refresh(session)
+
+    message_timestamp = datetime.now()
+    user_message = ChatMessage(
+        chat_session_id=session.id,
+        role="user",
+        content=message,
+        created_at=message_timestamp
+    )
+    db.add(user_message)
+    db.commit()
+    db.refresh(user_message)
+
+    messages = db.query(ChatMessage).filter(ChatMessage.chat_session_id == session.id).all()
+    message_history = [{"role": msg.role, "content": msg.content} for msg in messages[:-1]]
+
+    user_message_payload = {
+        "id": user_message.id,
+        "role": user_message.role,
+        "content": user_message.content,
+        "created_at": user_message.created_at.isoformat() if user_message.created_at else None
+    }
+
+    session_id_value = session.id
+    persona_name = persona.name
+    persona_prompt = persona.prompt_template
+
+    async def event_stream():
+        yield f"data: {json.dumps({'type': 'meta', 'session_id': session_id_value, 'user_message': user_message_payload, 'persona_name': persona_name})}\n\n"
+
+        response_parts = []
+        try:
+            async for token in ai_service.stream_response(
+                persona_prompt,
+                message,
+                message_history
+            ):
+                response_parts.append(token)
+                yield f"data: {json.dumps({'type': 'token', 'text': token})}\n\n"
+        except Exception as stream_error:
+            yield f"data: {json.dumps({'type': 'error', 'message': str(stream_error)})}\n\n"
+            return
+
+        full_response = "".join(response_parts).strip()
+
+        save_db = SessionLocal()
+        try:
+            assistant_message = ChatMessage(
+                chat_session_id=session_id_value,
+                role="assistant",
+                content=full_response,
+                created_at=message_timestamp
+            )
+            save_db.add(assistant_message)
+            save_db.commit()
+            save_db.refresh(assistant_message)
+
+            ai_message_payload = {
+                "id": assistant_message.id,
+                "role": assistant_message.role,
+                "content": assistant_message.content,
+                "created_at": assistant_message.created_at.isoformat() if assistant_message.created_at else None
+            }
+        finally:
+            save_db.close()
+
+        yield f"data: {json.dumps({'type': 'done', 'ai_message': ai_message_payload})}\n\n"
+
+    return StreamingResponse(
+        event_stream(),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"}
+    )
 
 @app.delete("/chat/sessions/{session_id}")
 def delete_chat_session(session_id: int, db: Session = Depends(get_db)):

@@ -360,7 +360,6 @@ def get_personas_data():
         ("Susan B. Anthony", 1820, 1906, "Women's Rights Activist", "American", "Determined suffragist fighting for women's right to vote. Strong-willed, strategic, and willing to face arrest and criticism for your convictions about equality."),
         ("Martin Luther", 1483, 1546, "Religious Reformer", "German", "Passionate monk who sparked the Protestant Reformation. Courageous in challenging authority, deeply religious, but also prone to strong emotions and unwavering in your convictions."),
         ("Simón Bolívar", 1783, 1830, "Revolutionary Leader", "Venezuelan", "Charismatic liberator of South America from Spanish rule. Idealistic about independence and unity, though often frustrated by political realities and regional divisions."),
-        
         # Artists and Writers
         ("William Shakespeare", 1564, 1616, "Playwright and Poet", "English", "Masterful playwright and poet with deep understanding of human nature. Creative, observant, with unmatched ability to capture the full range of human emotion and experience."),
         ("Leonardo da Vinci", 1452, 1519, "Artist and Inventor", "Italian", "Renaissance master equally skilled in art and science. Endlessly curious, perfectionist, with notebooks full of observations about anatomy, engineering, and the natural world."),
@@ -474,15 +473,22 @@ def populate_personas():
     db = SessionLocal()
     
     try:
-        # Check if personas already exist
-        existing_count = db.query(Persona).count()
-        if existing_count > 0:
-            print(f"Database already contains {existing_count} personas. Skipping population.")
-            return
-        
         personas_data = get_personas_data()
         
+        # Deduplicate personas_data by name
+        unique_personas = {}
+        for p in personas_data:
+            unique_personas[p[0]] = p
+        personas_data = list(unique_personas.values())
+        
+        # Get existing persona names
+        existing_personas = {p.name for p in db.query(Persona).all()}
+        
+        added_count = 0
         for name, birth_year, death_year, profession, nationality, description in personas_data:
+            if name in existing_personas:
+                continue
+                
             # Create enhanced prompt
             prompt_template = create_enhanced_prompt(
                 name, birth_year, death_year, profession, nationality, description
@@ -502,9 +508,13 @@ def populate_personas():
             )
             
             db.add(persona)
+            added_count += 1
         
-        db.commit()
-        print(f"Successfully added {len(personas_data)} personas to the database!")
+        if added_count > 0:
+            db.commit()
+            print(f"Successfully added {added_count} new personas to the database!")
+        else:
+            print("No new personas to add.")
         
     except Exception as e:
         print(f"Error populating personas: {e}")

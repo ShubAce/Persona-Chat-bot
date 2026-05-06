@@ -15,12 +15,13 @@ class PersonaChatService:
             raise ValueError("GROQ_API_KEY not found in environment variables")
         
         try:
-            self.chat_model = ChatGroq(
-                model="llama-3.1-8b-instant",
-                api_key=self.groq_api_key,
-                temperature=0.8,
-                max_tokens=512
-            )
+                self.chat_model = ChatGroq(
+                    model="llama-3.1-8b-instant",
+                    api_key=self.groq_api_key,
+                    temperature=0.8,
+                    max_tokens=512,
+                    streaming=True
+                )
         except Exception as e:
             print(f"Failed to initialize primary model, trying alternative: {e}")
             try:
@@ -28,7 +29,8 @@ class PersonaChatService:
                     model="mixtral-8x7b-32768",
                     api_key=self.groq_api_key,
                     temperature=0.8,
-                    max_tokens=512
+                    max_tokens=512,
+                    streaming=True
                 )
             except Exception as e2:
                 print(f"Failed to initialize alternative model: {e2}")
@@ -84,6 +86,20 @@ IMPORTANT CONVERSATION GUIDELINES:
             return response
         except Exception as e:
             return f"I apologize, but I'm having trouble processing your request right now. Error: {str(e)}"
+
+    async def stream_response(self,
+                              persona_prompt: str,
+                              user_message: str,
+                              chat_history: List[Dict]):
+        """Stream response tokens from the persona."""
+        formatted_history = self.format_chat_history(chat_history)
+        async for chunk in self.chain.astream({
+            "system_prompt": persona_prompt,
+            "chat_history": formatted_history,
+            "user_input": user_message
+        }):
+            if chunk:
+                yield chunk
     
     def generate_chat_title(self, first_message: str) -> str:
         """Generate a title for the chat session based on the first message."""

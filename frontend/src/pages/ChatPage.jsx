@@ -1,11 +1,12 @@
 import React, { useState, useRef, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { useQuery, useMutation, useQueryClient } from "react-query";
+import { useQuery, useQueryClient } from "react-query";
 import { personasAPI, chatAPI } from "../services/api";
 import LoadingSpinner from "../components/LoadingSpinner";
 import MessageBubble from "../components/MessageBubble";
 import ChatSidebar from "../components/ChatSidebar";
-import { PaperAirplaneIcon, ArrowLeftIcon, Bars3Icon, XMarkIcon } from "@heroicons/react/24/outline";
+import { AnimatePresence } from "framer-motion";
+import { PaperAirplaneIcon, ArrowLeftIcon, Bars3Icon } from "@heroicons/react/24/outline";
 import toast from "react-hot-toast";
 
 const ChatPage = () => {
@@ -16,8 +17,10 @@ const ChatPage = () => {
 	const [messages, setMessages] = useState([]);
 	const [currentSessionId, setCurrentSessionId] = useState(sessionId ? parseInt(sessionId) : null);
 	const [sidebarOpen, setSidebarOpen] = useState(false);
+	const [isStreaming, setIsStreaming] = useState(false);
 	const messagesEndRef = useRef(null);
 	const textareaRef = useRef(null);
+	const streamAbortRef = useRef(null);
 
 	// Validate personaId early
 	useEffect(() => {
@@ -28,6 +31,12 @@ const ChatPage = () => {
 			return;
 		}
 	}, [personaId, navigate]);
+
+	useEffect(() => {
+		return () => {
+			streamAbortRef.current?.abort();
+		};
+	}, []);
 
 	// Fetch persona
 	const {
@@ -59,54 +68,54 @@ const ChatPage = () => {
 				toast.error("Failed to load chat session");
 				setCurrentSessionId(null); // Reset session ID on error
 			},
-		}
+		},
 	);
 
-	// Send message mutation
-	const sendMessageMutation = useMutation((messageData) => chatAPI.sendMessage(messageData), {
-		onSuccess: (response) => {
-			// Replace the temporary user message with the one from database (with correct timestamp)
-			if (response.data && response.data.user_message) {
-				setMessages((prev) => {
-					// Remove the temporary user message (last one) and add both messages from database
-					const withoutTemp = prev.slice(0, -1);
-					const newMessages = [];
+	const updateMessageById = (messageId, updater) => {
+		setMessages((prev) =>
+			prev.map((msg) => (msg.id === messageId ? { ...msg, ...(typeof updater === "function" ? updater(msg) : updater) } : msg)),
+		);
+	};
 
-					// Add user message with database timestamp
-					newMessages.push(response.data.user_message);
+	const processEventStream = async (response, handlers) => {
+		const reader = response.body?.getReader();
+		if (!reader) {
+			throw new Error("Streaming not supported by the browser");
+		}
+		const decoder = new TextDecoder("utf-8");
+		let buffer = "";
 
-					// Add AI message with database timestamp
-					if (response.data.ai_message) {
-						newMessages.push(response.data.ai_message);
-					}
+		while (true) {
+			const { value, done } = await reader.read();
+			if (done) break;
+			buffer += decoder.decode(value, { stream: true });
 
-					return [...withoutTemp, ...newMessages];
-				});
-			}
-
-			// Update session ID if provided
-			if (response.data && response.data.session_id) {
-				setCurrentSessionId(response.data.session_id);
-
-				// Update URL if this is a new session
-				if (!sessionId) {
-					navigate(`/chat/${personaId}/${response.data.session_id}`, { replace: true });
+			let boundaryIndex = buffer.indexOf("\n\n");
+			while (boundaryIndex !== -1) {
+				const rawEvent = buffer.slice(0, boundaryIndex).trim();
+				buffer = buffer.slice(boundaryIndex + 2);
+				if (rawEvent) {
+					rawEvent.split("\n").forEach((line) => {
+						if (!line.startsWith("data:")) return;
+						const payloadText = line.replace(/^data:\s*/, "").trim();
+						if (!payloadText) return;
+						let payload;
+						try {
+							payload = JSON.parse(payloadText);
+						} catch (parseError) {
+							return;
+						}
+						handlers.onEvent?.(payload);
+					});
 				}
-
-				// Invalidate queries to refresh sidebar
-				queryClient.invalidateQueries("recent-sessions");
-				queryClient.invalidateQueries(["session", response.data.session_id]);
+				boundaryIndex = buffer.indexOf("\n\n");
 			}
-		},
-		onError: (error) => {
-			toast.error("Failed to send message");
-			console.error("Send message error:", error);
-		},
-	});
+		}
+	};
 
 	const handleSendMessage = async (e) => {
 		e.preventDefault();
-		if (!message.trim() || sendMessageMutation.isLoading) return;
+		if (!message.trim() || isStreaming) return;
 
 		// Validate persona ID before proceeding
 		if (!personaId || isNaN(parseInt(personaId))) {
@@ -118,21 +127,96 @@ const ChatPage = () => {
 		const messageText = message.trim();
 		setMessage("");
 
-		// Add user message immediately
-		const userMessage = {
-			id: Date.now(),
-			role: "user",
-			content: messageText,
-			created_at: new Date().toISOString(),
-		};
-		setMessages((prev) => [...prev, userMessage]);
+		const nowIso = new Date().toISOString();
+		const tempUserId = `temp-user-${Date.now()}`;
+		const tempAssistantId = `temp-assistant-${Date.now()}`;
+		let activeSessionId = currentSessionId;
 
-		// Send to API
-		sendMessageMutation.mutate({
-			message: messageText,
-			persona_id: parseInt(personaId),
-			session_id: currentSessionId,
-		});
+		setMessages((prev) => [
+			...prev,
+			{ id: tempUserId, client_id: tempUserId, role: "user", content: messageText, created_at: nowIso, isTemp: true },
+			{ id: tempAssistantId, client_id: tempAssistantId, role: "assistant", content: "", created_at: nowIso, isStreaming: true },
+		]);
+
+		setIsStreaming(true);
+		const abortController = new AbortController();
+		streamAbortRef.current = abortController;
+
+		try {
+			const response = await chatAPI.streamMessage(
+				{
+					message: messageText,
+					persona_id: parseInt(personaId),
+					session_id: currentSessionId,
+				},
+				abortController.signal,
+			);
+
+			if (!response.ok) {
+				throw new Error("Failed to start streaming response");
+			}
+
+			await processEventStream(response, {
+				onEvent: (payload) => {
+					if (payload.type === "meta") {
+						if (payload.user_message) {
+							updateMessageById(tempUserId, {
+								...payload.user_message,
+								isTemp: false,
+							});
+						}
+
+						if (payload.session_id) {
+							activeSessionId = payload.session_id;
+							setCurrentSessionId(payload.session_id);
+							if (!sessionId) {
+								navigate(`/chat/${personaId}/${payload.session_id}`, { replace: true });
+							}
+						}
+					}
+
+					if (payload.type === "token" && payload.text) {
+						updateMessageById(tempAssistantId, (msg) => ({
+							content: `${msg.content}${payload.text}`,
+						}));
+					}
+
+					if (payload.type === "error") {
+						updateMessageById(tempAssistantId, {
+							content: "Sorry, I couldn't generate a response right now.",
+							isStreaming: false,
+						});
+						setIsStreaming(false);
+						toast.error(payload.message || "Streaming error");
+					}
+
+					if (payload.type === "done") {
+						if (payload.ai_message) {
+							updateMessageById(tempAssistantId, {
+								...payload.ai_message,
+								isStreaming: false,
+							});
+						}
+						setIsStreaming(false);
+						queryClient.invalidateQueries("recent-sessions");
+						if (payload.ai_message?.id && activeSessionId) {
+							queryClient.invalidateQueries(["session", activeSessionId]);
+						}
+					}
+				},
+			});
+			setIsStreaming(false);
+		} catch (error) {
+			if (error.name !== "AbortError") {
+				console.error("Streaming error:", error);
+				toast.error("Failed to stream response");
+				updateMessageById(tempAssistantId, {
+					content: "Sorry, I couldn't generate a response right now.",
+					isStreaming: false,
+				});
+			}
+			setIsStreaming(false);
+		}
 	};
 
 	const handleKeyPress = (e) => {
@@ -152,8 +236,8 @@ const ChatPage = () => {
 
 	// Scroll to bottom when messages change
 	useEffect(() => {
-		messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-	}, [messages]);
+		messagesEndRef.current?.scrollIntoView({ behavior: isStreaming ? "auto" : "smooth" });
+	}, [messages, isStreaming]);
 
 	// Initialize with greeting if new session
 	useEffect(() => {
@@ -181,7 +265,7 @@ const ChatPage = () => {
 		return (
 			<div className="min-h-screen flex items-center justify-center">
 				<div className="text-center">
-					<p className="text-gray-500">Persona not found</p>
+					<p className="text-slate-500 dark:text-slate-400">Persona not found</p>
 					<button
 						onClick={() => navigate("/")}
 						className="mt-4 btn-primary"
@@ -194,7 +278,7 @@ const ChatPage = () => {
 	}
 
 	return (
-		<div className="h-screen flex bg-gray-50">
+		<div className="h-screen flex bg-transparent chat-shell">
 			{/* Mobile sidebar backdrop */}
 			{sidebarOpen && (
 				<div
@@ -205,7 +289,7 @@ const ChatPage = () => {
 
 			{/* Sidebar */}
 			<div
-				className={`fixed lg:relative lg:flex flex-col w-80 bg-white border-r border-gray-200 z-50 transform transition-transform duration-300 ease-in-out ${
+				className={`fixed lg:relative lg:flex flex-col w-80 bg-white border-r border-gray-200 dark:bg-slate-950 dark:border-slate-800 z-50 transform transition-transform duration-300 ease-in-out ${
 					sidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
 				}`}
 			>
@@ -219,17 +303,17 @@ const ChatPage = () => {
 			{/* Main chat area */}
 			<div className="flex-1 flex flex-col">
 				{/* Header */}
-				<header className="bg-white border-b border-gray-200 px-4 py-3 flex items-center">
+				<header className="bg-white/90 border-b border-slate-200 px-4 py-3 flex items-center backdrop-blur dark:bg-slate-950/80 dark:border-slate-800">
 					<button
 						onClick={() => setSidebarOpen(true)}
-						className="lg:hidden mr-3 p-2 rounded-md hover:bg-gray-100"
+						className="lg:hidden mr-3 p-2 rounded-md hover:bg-gray-100 dark:hover:bg-slate-800"
 					>
 						<Bars3Icon className="h-5 w-5" />
 					</button>
 
 					<button
 						onClick={() => navigate("/")}
-						className="mr-3 p-2 rounded-md hover:bg-gray-100"
+						className="mr-3 p-2 rounded-md hover:bg-gray-100 dark:hover:bg-slate-800"
 					>
 						<ArrowLeftIcon className="h-5 w-5" />
 					</button>
@@ -237,10 +321,10 @@ const ChatPage = () => {
 					<div className="flex items-center flex-1">
 						{personaLoading ? (
 							<>
-								<div className="w-10 h-10 rounded-full mr-3 bg-gray-200 animate-pulse"></div>
+								<div className="w-10 h-10 rounded-full mr-3 bg-gray-200 dark:bg-slate-800 animate-pulse"></div>
 								<div>
-									<div className="h-4 bg-gray-200 rounded w-32 mb-1 animate-pulse"></div>
-									<div className="h-3 bg-gray-200 rounded w-24 animate-pulse"></div>
+									<div className="h-4 bg-gray-200 dark:bg-slate-800 rounded w-32 mb-1 animate-pulse"></div>
+									<div className="h-3 bg-gray-200 dark:bg-slate-800 rounded w-24 animate-pulse"></div>
 								</div>
 							</>
 						) : persona ? (
@@ -265,83 +349,40 @@ const ChatPage = () => {
 									</span>
 								</div>
 								<div>
-									<h1 className="font-semibold text-gray-900">{persona.name || "Unknown Persona"}</h1>
-									<p className="text-sm text-gray-500">
+									<h1 className="font-semibold text-slate-900 dark:text-slate-100">{persona.name || "Unknown Persona"}</h1>
+									<p className="text-sm text-slate-500 dark:text-slate-400">
 										{persona.profession || "Unknown"} • {persona.nationality || "Unknown"}
 									</p>
 								</div>
 							</>
 						) : (
 							<div>
-								<h1 className="font-semibold text-gray-900">Persona Not Found</h1>
-								<p className="text-sm text-gray-500">Unable to load persona details</p>
+								<h1 className="font-semibold text-slate-900 dark:text-slate-100">Persona Not Found</h1>
+								<p className="text-sm text-slate-500 dark:text-slate-400">Unable to load persona details</p>
 							</div>
 						)}
 					</div>
 				</header>
 
 				{/* Messages */}
-				<div className="flex-1 overflow-y-auto px-4 py-6 bg-gradient-to-b from-gray-50 to-white">
+				<div className="flex-1 overflow-y-auto px-4 py-6 bg-transparent chat-panel">
 					<div className="max-w-4xl mx-auto space-y-1">
-						{messages.map((msg, index) => (
-							<MessageBubble
-								key={msg.id || index}
-								message={msg}
-								persona={persona}
-							/>
-						))}
-
-						{sendMessageMutation.isLoading && (
-							<div className="flex justify-start mb-6">
-								<div className="flex items-end space-x-3">
-									<div className="w-10 h-10 rounded-full flex-shrink-0 border-2 border-white shadow-sm bg-gradient-to-br from-primary-500 to-primary-600 flex items-center justify-center overflow-hidden">
-										{persona?.image_url ? (
-											<img
-												src={persona.image_url}
-												alt={persona?.name || "AI"}
-												className="w-full h-full object-cover"
-												onError={(e) => {
-													e.target.style.display = "none";
-													e.target.nextElementSibling.style.display = "flex";
-												}}
-											/>
-										) : null}
-										<span
-											className="text-white text-sm font-medium"
-											style={{ display: persona?.image_url ? "none" : "flex" }}
-										>
-											{persona?.name?.[0] || "AI"}
-										</span>
-									</div>
-									<div className="bg-white rounded-2xl rounded-bl-md px-4 py-3 shadow-sm border border-gray-100">
-										<div className="flex items-center space-x-1">
-											<div className="flex space-x-1">
-												<div
-													className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"
-													style={{ animationDelay: "0ms" }}
-												></div>
-												<div
-													className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"
-													style={{ animationDelay: "150ms" }}
-												></div>
-												<div
-													className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"
-													style={{ animationDelay: "300ms" }}
-												></div>
-											</div>
-											<span className="text-xs text-gray-500 ml-2">{persona?.name} is typing...</span>
-										</div>
-									</div>
-								</div>
-							</div>
-						)}
+						<AnimatePresence initial={false}>
+							{messages.map((msg, index) => (
+								<MessageBubble
+									key={msg.client_id || msg.id || index}
+									message={msg}
+									persona={persona}
+								/>
+							))}
+						</AnimatePresence>
 					</div>
 
 					<div ref={messagesEndRef} />
 				</div>
 
 				{/* Message input */}
-				<div className="border-t border-gray-200 bg-white px-4 py-4 shadow-lg">
+				<div className="border-t border-slate-200 bg-white/90 px-4 py-4 shadow-lg backdrop-blur dark:border-slate-800 dark:bg-slate-950/80">
 					<div className="max-w-4xl mx-auto">
 						<form
 							onSubmit={handleSendMessage}
@@ -354,18 +395,28 @@ const ChatPage = () => {
 									onChange={(e) => setMessage(e.target.value)}
 									onKeyPress={handleKeyPress}
 									placeholder={persona?.name ? `Ask ${persona.name} something...` : "Type your message..."}
-									className="w-full px-4 py-3 pr-12 border border-gray-300 rounded-2xl focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent resize-none max-h-32 bg-gray-50 focus:bg-white transition-colors"
+									className="w-full px-4 py-3 pr-12 border border-gray-300 rounded-2xl focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent resize-none max-h-32 bg-gray-50 focus:bg-white transition-colors dark:bg-slate-900 dark:text-slate-100 dark:border-slate-700 dark:placeholder:text-slate-400 dark:focus:bg-slate-900"
 									rows="1"
-									disabled={sendMessageMutation.isLoading}
+									disabled={isStreaming}
 								/>
-								{message.trim() && <div className="absolute right-3 top-3 text-xs text-gray-400">{message.length}/1000</div>}
+								{message.trim() && (
+									<div className="absolute right-3 top-3 text-xs text-slate-400 dark:text-slate-500">{message.length}/1000</div>
+								)}
 							</div>
 							<button
 								type="submit"
-								disabled={!message.trim() || sendMessageMutation.isLoading}
-								className="p-3 bg-gradient-to-r from-primary-600 to-primary-700 text-white rounded-full hover:from-primary-700 hover:to-primary-800 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105 disabled:transform-none"
+								disabled={!message.trim() || isStreaming}
+								className="p-3 bg-gradient-to-r from-primary-600 to-primary-700 text-white rounded-full hover:from-primary-700 hover:to-primary-800 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105 disabled:transform-none dark:from-primary-500 dark:to-primary-400 dark:hover:from-primary-400 dark:hover:to-primary-300"
 							>
-								<PaperAirplaneIcon className="h-5 w-5" />
+								{isStreaming ? (
+									<span className="loading-dots text-white">
+										<div></div>
+										<div></div>
+										<div></div>
+									</span>
+								) : (
+									<PaperAirplaneIcon className="h-5 w-5" />
+								)}
 							</button>
 						</form>
 					</div>
