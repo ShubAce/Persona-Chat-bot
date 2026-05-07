@@ -26,7 +26,7 @@ const MessageBubble = ({ message, persona }) => {
 		>
 			<div className={`flex items-end space-x-3 ${isUser ? "flex-row-reverse space-x-reverse" : ""}`}>
 				{!isUser && (
-					<div className="w-10 h-10 rounded-full flex-shrink-0 border-2 border-white shadow-sm bg-gradient-to-br from-primary-500 to-primary-600 flex items-center justify-center overflow-hidden">
+					<div className="w-10 h-10 rounded-full flex-shrink-0 border-2 border-white shadow-md bg-gradient-to-br from-primary-500 to-primary-600 flex items-center justify-center overflow-hidden ring-2 ring-white/50 dark:ring-slate-800">
 						{persona?.image_url ? (
 							<img
 								src={persona.image_url}
@@ -48,7 +48,7 @@ const MessageBubble = ({ message, persona }) => {
 				)}
 
 				<div className="flex flex-col max-w-full">
-					{!isUser && persona?.name && <span className="text-xs text-slate-500 dark:text-slate-400 mb-1 px-1">{persona.name}</span>}
+					{!isUser && persona?.name && <span className="text-xs text-slate-500 dark:text-slate-400 mb-1 px-1 font-medium">{persona.name}</span>}
 
 					<div className={`${isUser ? "message-bubble-user" : "message-bubble-assistant"}`}>
 						{isUser ? (
@@ -65,14 +65,14 @@ const MessageBubble = ({ message, persona }) => {
 													style={tomorrow}
 													language={match[1]}
 													PreTag="div"
-													className="rounded-md !my-2"
+													className="rounded-md !my-2 shadow-lg"
 													{...props}
 												>
 													{String(children).replace(/\n$/, "")}
 												</SyntaxHighlighter>
 											) : (
 												<code
-													className="bg-slate-100 dark:bg-slate-800 dark:text-slate-100 px-1 py-0.5 rounded text-sm"
+													className="bg-slate-100 dark:bg-slate-800 dark:text-slate-100 px-1.5 py-0.5 rounded text-sm font-medium"
 													{...props}
 												>
 													{children}
@@ -84,7 +84,7 @@ const MessageBubble = ({ message, persona }) => {
 										ol: ({ children }) => <ol className="list-decimal list-inside mb-2 space-y-1">{children}</ol>,
 										li: ({ children }) => <li className="mb-1">{children}</li>,
 										blockquote: ({ children }) => (
-											<blockquote className="border-l-4 border-primary-200 pl-4 italic my-2 bg-slate-50 dark:bg-slate-800/60 py-2 rounded-r">
+											<blockquote className="border-l-4 border-primary-300 pl-4 italic my-2 bg-slate-50 dark:bg-slate-800/60 py-2 rounded-r">
 												{children}
 											</blockquote>
 										),
@@ -131,7 +131,7 @@ const MessageBubble = ({ message, persona }) => {
 				</div>
 
 				{isUser && (
-					<div className="w-10 h-10 bg-gradient-to-r from-primary-600 to-primary-700 rounded-full flex items-center justify-center flex-shrink-0 shadow-sm">
+					<div className="w-10 h-10 bg-gradient-to-r from-primary-600 to-primary-700 rounded-full flex items-center justify-center flex-shrink-0 shadow-md ring-2 ring-white/50 dark:ring-slate-800">
 						<span className="text-white text-xs font-medium">You</span>
 					</div>
 				)}

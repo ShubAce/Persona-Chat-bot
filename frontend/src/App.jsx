@@ -35,25 +35,25 @@ function App() {
 
 	return (
 		<ErrorBoundary>
-			<div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-sky-50 text-slate-900 transition-colors dark:from-slate-950 dark:via-slate-950 dark:to-slate-900 dark:text-slate-100">
-				<div className="relative overflow-hidden bg-gradient-to-r from-sky-600 via-cyan-600 to-emerald-500 text-white shadow-lg dark:from-slate-900 dark:via-slate-800 dark:to-slate-900">
-					<div className="pointer-events-none absolute inset-0 opacity-60">
-						<div className="absolute -right-24 -top-20 h-72 w-72 rounded-full bg-white/20 blur-3xl" />
-						<div className="absolute -left-24 bottom-0 h-64 w-64 rounded-full bg-white/10 blur-3xl" />
+			<div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-sky-50 text-slate-900 transition-colors dark:from-slate-950 dark:via-slate-950 dark:to-slate-900 dark:text-slate-100">
+				<div className="relative overflow-hidden hero-gradient text-white shadow-xl">
+					<div className="pointer-events-none absolute inset-0 opacity-70">
+						<div className="absolute -right-20 -top-20 h-72 w-72 rounded-full bg-white/20 blur-3xl animate-float" />
+						<div className="absolute -left-20 bottom-0 h-64 w-64 rounded-full bg-white/10 blur-3xl animate-float" style={{ animationDelay: "2s" }} />
 					</div>
-					<div className="container mx-auto flex flex-col gap-3 px-4 py-5 sm:flex-row sm:items-center sm:justify-between sm:gap-6">
+					<div className="relative container mx-auto flex flex-col gap-3 px-4 py-5 sm:flex-row sm:items-center sm:justify-between sm:gap-6">
 						<div>
-							<h1 className="text-2xl font-bold sm:text-3xl">Persona Chat Bot</h1>
+							<h1 className="text-2xl font-bold sm:text-3xl drop-shadow-sm">Persona Chat Bot</h1>
 							<p className="text-sm text-white/90 sm:text-base">Chat with historical figures and explore their stories</p>
 						</div>
 						<div className="flex items-center gap-3">
-							<div className="hidden rounded-full border border-white/30 bg-white/10 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-white sm:inline-flex">
+							<div className="hidden rounded-full border border-white/30 bg-white/10 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-white shadow-sm sm:inline-flex">
 								54+ personas
 							</div>
 							<button
 								type="button"
 								onClick={handleThemeToggle}
-								className="inline-flex items-center gap-2 rounded-full border border-white/30 bg-white/10 px-3 py-2 text-sm font-medium text-white backdrop-blur transition hover:bg-white/20"
+								className="inline-flex items-center gap-2 rounded-full border border-white/30 bg-white/10 px-3 py-2 text-sm font-medium text-white backdrop-blur transition-all hover:bg-white/20 hover:scale-105 shadow-lg"
 								aria-label={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
 								title={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
 							>

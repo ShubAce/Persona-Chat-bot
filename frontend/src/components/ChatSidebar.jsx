@@ -81,17 +81,19 @@ const ChatSidebar = ({ currentPersonaId, currentSessionId, onClose }) => {
 	}, {});
 
 	return (
-		<div className="h-full flex flex-col bg-white dark:bg-slate-950">
+		<div className="h-full flex flex-col bg-white/95 dark:bg-slate-950/95 backdrop-blur-xl">
 			{/* Header */}
-			<div className="p-4 border-b border-slate-200 dark:border-slate-800">
+			<div className="p-4 border-b border-slate-200/70 dark:border-slate-800">
 				<div className="flex items-center justify-between">
 					<h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100 flex items-center">
-						<ChatBubbleLeftRightIcon className="h-5 w-5 mr-2" />
+						<div className="p-1.5 bg-primary-100 dark:bg-primary-900/30 rounded-lg mr-2">
+							<ChatBubbleLeftRightIcon className="h-5 w-5 text-primary-600 dark:text-primary-400" />
+						</div>
 						Chats
 					</h2>
 					<button
 						onClick={onClose}
-						className="lg:hidden p-1 rounded-md hover:bg-gray-100 dark:hover:bg-slate-800"
+						className="lg:hidden p-1 rounded-md hover:bg-gray-100 dark:hover:bg-slate-800 transition-colors"
 					>
 						<XMarkIcon className="h-5 w-5" />
 					</button>
@@ -99,7 +101,7 @@ const ChatSidebar = ({ currentPersonaId, currentSessionId, onClose }) => {
 
 				<button
 					onClick={handleGoHome}
-					className="w-full mt-3 btn-secondary flex items-center justify-center text-sm"
+					className="w-full mt-3 btn-secondary flex items-center justify-center text-sm shadow-sm"
 				>
 					<HomeIcon className="h-4 w-4 mr-2" />
 					Back to Home
@@ -109,16 +111,16 @@ const ChatSidebar = ({ currentPersonaId, currentSessionId, onClose }) => {
 			{/* Scrollable content */}
 			<div className="flex-1 overflow-y-auto">
 				{/* Quick start new chats */}
-				<div className="p-4 border-b border-slate-200 dark:border-slate-800">
+				<div className="p-4 border-b border-slate-200/70 dark:border-slate-800">
 					<h3 className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-3">Start New Chat</h3>
 					<div className="space-y-2">
 						{personas.slice(0, 5).map((persona) => (
 							<button
 								key={persona.id}
 								onClick={() => handleNewChat(persona.id)}
-								className="w-full flex items-center p-2 text-left hover:bg-gray-50 dark:hover:bg-slate-800 rounded-lg transition-colors"
+								className="w-full flex items-center p-2 text-left hover:bg-gray-50 dark:hover:bg-slate-800/70 rounded-lg transition-all duration-200 group hover:shadow-md"
 							>
-								<div className="w-6 h-6 rounded-full mr-3 flex-shrink-0 bg-gradient-to-br from-primary-500 to-primary-600 flex items-center justify-center overflow-hidden">
+								<div className="w-6 h-6 rounded-full mr-3 flex-shrink-0 bg-gradient-to-br from-primary-500 to-primary-600 flex items-center justify-center overflow-hidden shadow-sm">
 									{persona.image_url ? (
 										<img
 											src={persona.image_url}
@@ -138,10 +140,10 @@ const ChatSidebar = ({ currentPersonaId, currentSessionId, onClose }) => {
 									</span>
 								</div>
 								<div className="flex-1 min-w-0">
-									<p className="text-sm font-medium text-slate-900 dark:text-slate-100 truncate">{persona.name}</p>
+									<p className="text-sm font-medium text-slate-900 dark:text-slate-100 truncate group-hover:text-primary-600 dark:group-hover:text-primary-400 transition-colors">{persona.name}</p>
 									<p className="text-xs text-slate-500 dark:text-slate-400 truncate">{persona.profession}</p>
 								</div>
-								<PlusIcon className="h-4 w-4 text-slate-400 dark:text-slate-500 flex-shrink-0 ml-2" />
+								<PlusIcon className="h-4 w-4 text-slate-400 dark:text-slate-500 flex-shrink-0 ml-2 transition-transform group-hover:scale-110" />
 							</button>
 						))}
 					</div>
@@ -162,7 +164,7 @@ const ChatSidebar = ({ currentPersonaId, currentSessionId, onClose }) => {
 							{Object.values(sessionsByPersona).map(({ persona, sessions: personaSessions }) => (
 								<div key={persona.id}>
 									<div className="flex items-center mb-2">
-										<div className="w-5 h-5 rounded-full mr-2 bg-gradient-to-br from-primary-500 to-primary-600 flex items-center justify-center overflow-hidden">
+										<div className="w-5 h-5 rounded-full mr-2 bg-gradient-to-br from-primary-500 to-primary-600 flex items-center justify-center overflow-hidden shadow-sm">
 											{persona.image_url ? (
 												<img
 													src={persona.image_url}
@@ -188,9 +190,9 @@ const ChatSidebar = ({ currentPersonaId, currentSessionId, onClose }) => {
 										{personaSessions.map((session) => (
 											<div
 												key={session.id}
-												className={`group flex items-center justify-between p-2 rounded-lg hover:bg-gray-50 dark:hover:bg-slate-800 cursor-pointer transition-colors ${
+												className={`group flex items-center justify-between p-2 rounded-lg hover:bg-gray-50 dark:hover:bg-slate-800/70 cursor-pointer transition-all duration-200 hover:shadow-sm ${
 													session.id === currentSessionId
-														? "bg-primary-50 border border-primary-200 dark:bg-primary-500/10 dark:border-primary-400/40"
+														? "bg-primary-50/80 border border-primary-200 dark:bg-primary-500/10 dark:border-primary-400/40"
 														: ""
 												}`}
 											>
@@ -233,8 +235,8 @@ const ChatSidebar = ({ currentPersonaId, currentSessionId, onClose }) => {
 
 			{/* Delete confirmation modal */}
 			{showDeleteConfirm && (
-				<div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-					<div className="bg-white rounded-lg p-6 max-w-sm mx-4 dark:bg-slate-900">
+				<div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 backdrop-blur-sm">
+					<div className="bg-white/95 rounded-lg p-6 max-w-sm mx-4 dark:bg-slate-900/95 backdrop-blur-xl border border-white/20 dark:border-slate-700/30 shadow-2xl">
 						<h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-2">Delete Chat</h3>
 						<p className="text-slate-600 dark:text-slate-300 mb-4">
 							Are you sure you want to delete this chat? This action cannot be undone.

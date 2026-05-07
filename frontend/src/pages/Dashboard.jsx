@@ -138,7 +138,9 @@ const Dashboard = () => {
 				<div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
 					<div className="flex justify-between items-center h-16">
 						<div className="flex items-center">
-							<ChatBubbleLeftRightIcon className="h-8 w-8 text-primary-600 mr-3" />
+							<div className="p-2 bg-primary-100 dark:bg-primary-900/30 rounded-lg mr-3">
+								<ChatBubbleLeftRightIcon className="h-6 w-6 text-primary-600 dark:text-primary-400" />
+							</div>
 							<h1 className="text-xl font-bold text-slate-900 dark:text-slate-100">Persona Chat</h1>
 						</div>
 
@@ -154,12 +156,12 @@ const Dashboard = () => {
 
 			<div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
 				<section className="mb-10">
-					<div className="relative overflow-hidden rounded-3xl border border-slate-200/70 bg-white/80 p-6 shadow-sm backdrop-blur dark:border-slate-800 dark:bg-slate-900/70 sm:p-8">
+					<div className="relative overflow-hidden rounded-3xl border border-slate-200/70 bg-white/80 p-6 shadow-xl backdrop-blur dark:border-slate-800 dark:bg-slate-900/70 sm:p-8">
 						<div className="pointer-events-none absolute -right-24 -top-20 h-64 w-64 rounded-full bg-sky-200/40 blur-3xl dark:bg-sky-500/20" />
 						<div className="pointer-events-none absolute -left-16 bottom-0 h-56 w-56 rounded-full bg-emerald-200/40 blur-3xl dark:bg-emerald-500/20" />
 						<div className="relative grid gap-8 lg:grid-cols-[1.25fr,0.75fr]">
 							<div className="space-y-5">
-								<div className="inline-flex items-center gap-2 rounded-full border border-slate-200/70 bg-white/80 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-slate-700 dark:border-slate-800 dark:bg-slate-950/60 dark:text-slate-300">
+								<div className="inline-flex items-center gap-2 rounded-full border border-slate-200/70 bg-white/80 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-slate-700 shadow-sm dark:border-slate-800 dark:bg-slate-950/60 dark:text-slate-300">
 									<SparklesIcon className="h-4 w-4 text-primary-500" />
 									Interactive historical chat
 								</div>
@@ -173,31 +175,31 @@ const Dashboard = () => {
 										type="button"
 										onClick={startRandomChat}
 										disabled={personas.length === 0}
-										className="btn-primary shadow-sm"
+										className="btn-primary shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200"
 									>
 										Start a random chat
 									</button>
 									<button
 										type="button"
 										onClick={handleScrollToPersonas}
-										className="btn-secondary"
+										className="btn-secondary shadow-sm hover:shadow transform hover:scale-105 transition-all duration-200"
 									>
 										Browse all personas
 									</button>
 								</div>
 							</div>
 							<div className="grid grid-cols-2 gap-4">
-								<div className="rounded-2xl border border-slate-200/70 bg-white/90 p-4 shadow-sm dark:border-slate-800 dark:bg-slate-950/70">
+								<div className="rounded-2xl border border-slate-200/70 bg-white/90 p-4 shadow-md dark:border-slate-800 dark:bg-slate-950/70 hover:shadow-lg transition-shadow">
 									<p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Personas</p>
 									<p className="mt-2 text-2xl font-bold text-slate-900 dark:text-white">{personas.length}</p>
 									<p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Across science, art, and politics</p>
 								</div>
-								<div className="rounded-2xl border border-slate-200/70 bg-white/90 p-4 shadow-sm dark:border-slate-800 dark:bg-slate-950/70">
+								<div className="rounded-2xl border border-slate-200/70 bg-white/90 p-4 shadow-md dark:border-slate-800 dark:bg-slate-950/70 hover:shadow-lg transition-shadow">
 									<p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Professions</p>
 									<p className="mt-2 text-2xl font-bold text-slate-900 dark:text-white">{professionCount}</p>
 									<p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Curated with context</p>
 								</div>
-								<div className="col-span-2 rounded-2xl border border-slate-200/70 bg-white/90 p-4 shadow-sm dark:border-slate-800 dark:bg-slate-950/70">
+								<div className="col-span-2 rounded-2xl border border-slate-200/70 bg-white/90 p-4 shadow-md dark:border-slate-800 dark:bg-slate-950/70 hover:shadow-lg transition-shadow">
 									<p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Recent chats</p>
 									<p className="mt-2 text-2xl font-bold text-slate-900 dark:text-white">{recentSessionCount}</p>
 									<p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Resume past conversations anytime</p>

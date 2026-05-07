@@ -282,14 +282,14 @@ const ChatPage = () => {
 			{/* Mobile sidebar backdrop */}
 			{sidebarOpen && (
 				<div
-					className="fixed inset-0 bg-black bg-opacity-50 z-40 lg:hidden"
+					className="fixed inset-0 bg-black/50 z-40 lg:hidden backdrop-blur-sm"
 					onClick={() => setSidebarOpen(false)}
 				/>
 			)}
 
 			{/* Sidebar */}
 			<div
-				className={`fixed lg:relative lg:flex flex-col w-80 bg-white border-r border-gray-200 dark:bg-slate-950 dark:border-slate-800 z-50 transform transition-transform duration-300 ease-in-out ${
+				className={`fixed lg:relative lg:flex flex-col w-80 bg-white/95 border-r border-slate-200/70 dark:bg-slate-950/95 dark:border-slate-800 z-50 transform transition-transform duration-300 ease-in-out ${
 					sidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
 				}`}
 			>
@@ -303,17 +303,17 @@ const ChatPage = () => {
 			{/* Main chat area */}
 			<div className="flex-1 flex flex-col">
 				{/* Header */}
-				<header className="bg-white/90 border-b border-slate-200 px-4 py-3 flex items-center backdrop-blur dark:bg-slate-950/80 dark:border-slate-800">
+				<header className="bg-white/90 border-b border-slate-200/70 px-4 py-3 flex items-center backdrop-blur dark:bg-slate-950/80 dark:border-slate-800 shadow-sm">
 					<button
 						onClick={() => setSidebarOpen(true)}
-						className="lg:hidden mr-3 p-2 rounded-md hover:bg-gray-100 dark:hover:bg-slate-800"
+						className="lg:hidden mr-3 p-2 rounded-md hover:bg-gray-100 dark:hover:bg-slate-800 transition-colors"
 					>
 						<Bars3Icon className="h-5 w-5" />
 					</button>
 
 					<button
 						onClick={() => navigate("/")}
-						className="mr-3 p-2 rounded-md hover:bg-gray-100 dark:hover:bg-slate-800"
+						className="mr-3 p-2 rounded-md hover:bg-gray-100 dark:hover:bg-slate-800 transition-colors"
 					>
 						<ArrowLeftIcon className="h-5 w-5" />
 					</button>
@@ -321,7 +321,7 @@ const ChatPage = () => {
 					<div className="flex items-center flex-1">
 						{personaLoading ? (
 							<>
-								<div className="w-10 h-10 rounded-full mr-3 bg-gray-200 dark:bg-slate-800 animate-pulse"></div>
+								<div className="w-10 h-10 rounded-full mr-3 bg-gray-200 dark:bg-slate-800 animate-pulse shadow-inner"></div>
 								<div>
 									<div className="h-4 bg-gray-200 dark:bg-slate-800 rounded w-32 mb-1 animate-pulse"></div>
 									<div className="h-3 bg-gray-200 dark:bg-slate-800 rounded w-24 animate-pulse"></div>
@@ -329,7 +329,7 @@ const ChatPage = () => {
 							</>
 						) : persona ? (
 							<>
-								<div className="w-10 h-10 rounded-full mr-3 bg-gradient-to-br from-primary-500 to-primary-600 flex items-center justify-center overflow-hidden">
+								<div className="w-10 h-10 rounded-full mr-3 bg-gradient-to-br from-primary-500 to-primary-600 flex items-center justify-center overflow-hidden shadow-md ring-2 ring-white/50 dark:ring-slate-800">
 									{persona.image_url ? (
 										<img
 											src={persona.image_url}
@@ -382,7 +382,7 @@ const ChatPage = () => {
 				</div>
 
 				{/* Message input */}
-				<div className="border-t border-slate-200 bg-white/90 px-4 py-4 shadow-lg backdrop-blur dark:border-slate-800 dark:bg-slate-950/80">
+				<div className="border-t border-slate-200/70 bg-white/90 px-4 py-4 shadow-lg backdrop-blur dark:border-slate-800 dark:bg-slate-950/80">
 					<div className="max-w-4xl mx-auto">
 						<form
 							onSubmit={handleSendMessage}
@@ -395,7 +395,7 @@ const ChatPage = () => {
 									onChange={(e) => setMessage(e.target.value)}
 									onKeyPress={handleKeyPress}
 									placeholder={persona?.name ? `Ask ${persona.name} something...` : "Type your message..."}
-									className="w-full px-4 py-3 pr-12 border border-gray-300 rounded-2xl focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent resize-none max-h-32 bg-gray-50 focus:bg-white transition-colors dark:bg-slate-900 dark:text-slate-100 dark:border-slate-700 dark:placeholder:text-slate-400 dark:focus:bg-slate-900"
+									className="w-full px-4 py-3 pr-12 border border-gray-300 rounded-2xl focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent resize-none max-h-32 bg-gray-50/80 focus:bg-white transition-colors dark:bg-slate-900/50 dark:text-slate-100 dark:border-slate-700 dark:placeholder:text-slate-400 dark:focus:bg-slate-900/80 shadow-inner"
 									rows="1"
 									disabled={isStreaming}
 								/>
